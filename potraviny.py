@@ -23,8 +23,8 @@ def process_offenses(raw_offenses):
     return '|'.join(offens.strip() for offens in raw_offenses)
 
 
-def request_html(start_url, params, headers):
-    r = requests.get(start_url, params=params, headers=headers, timeout=2)
+def request_html(url, params, headers):
+    r = requests.get(url, params=params, headers=headers, timeout=4)
     html = lxml.html.fromstring(r.text)
     return html
 
@@ -33,7 +33,9 @@ def get_num_pages(html):
     return len(html.xpath('//div[@class="Pager"]/div')[0].xpath('a/text()')[-2:])
 
 
-def get_data(html):
+def get_data(html, headers):
+    detail_url = 'https://www.potravinynapranyri.cz/WDetail.aspx'
+
     trs = html.xpath("//table/tr")[1:]  # skip table header
 
     data = []
@@ -41,6 +43,7 @@ def get_data(html):
     for tr in trs:
         facility = {}
 
+        # Data from the table
         id_string = tr.xpath('@onclick')[0]
         facility['id'] = get_id(id_string)
 
@@ -53,12 +56,30 @@ def get_data(html):
             tr.xpath('td')[4].xpath('span/text()')
         )
 
+        # Data from the detail page
+        detail_html = request_html(
+            detail_url, params={'id': facility['id']}, headers=headers
+        )
+
+        facility['stav_uzavreni'] = detail_html.xpath('//table/tr/td[2]/a/text()')[0]
+
+        try:
+            closed, opened, reference = detail_html.xpath(
+                '//table/tr/td[2]/span/text()'
+            )
+            facility['datum_uvolneni_zakazu'] = opened
+        except ValueError:  # facility is still closed and one row is missing
+            closed, reference = detail_html.xpath('//table/tr/td[2]/span/text()')
+        facility['datum_uzavreni'] = closed
+        facility['referencni_cislo'] = reference
+
+        print(facility['nazev'])
         data.append(facility)
 
     return data
 
 
-def main():
+def facilities_to_csv(output_filename='provozovny.csv'):
     start_url = 'https://www.potravinynapranyri.cz/WSearch.aspx'
 
     params = {
@@ -83,13 +104,13 @@ def main():
     for i in range(1, pages + 1):
         params['page'] = i
         html = request_html(start_url, params, headers)
-        data.extend(get_data(html))
+        data.extend(get_data(html, headers=headers))
 
-    with open('provozovny.csv', 'w') as file:
+    with open(output_filename, 'w') as file:
         writer = csv.DictWriter(file, fieldnames=[col for col in data[0].keys()])
         writer.writeheader()
         writer.writerows(data)
 
 
 if __name__ == '__main__':
-    main()
+    facilities_to_csv()
