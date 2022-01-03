@@ -8,6 +8,7 @@ David Beazley | Keynote: Built in Super Heroes
 https://www.youtube.com/watch?v=lyDLAutA88s
 """
 
+import argparse
 import csv
 import datetime
 
@@ -24,20 +25,21 @@ def process_offenses(raw_offenses):
     return '|'.join(offens.strip() for offens in raw_offenses)
 
 
-def request_html(s, url, params, headers):
-    r = s.get(url, params=params, headers=headers, timeout=3)
+def get_request(s, url, params, headers):
+    return s.get(url, params=params, headers=headers, timeout=3)
+
+
+def get_last_page_index(r):
     html = lxml.html.fromstring(r.text)
-    return html
-
-
-def get_last_page_index(html):
     href_string = html.xpath('//a[@class="last"]/@href')[0]
     return int(href_string.split('&page=')[-1])
 
 
-def get_data(s, html, headers):
+def get_data(s, resp):
     detail_url = 'https://www.potravinynapranyri.cz/WDetail.aspx'
+    date_format = '%d. %m. %Y'
 
+    html = lxml.html.fromstring(resp.text)
     trs = html.xpath("//table/tr")[1:]  # skip table header
 
     data = []
@@ -54,16 +56,17 @@ def get_data(s, html, headers):
         facility['nazev'] = tr.xpath('td')[1].xpath('span/text()')[0]
         facility['adresa'] = tr.xpath('td')[2].xpath('span/text()')[0]
         published = tr.xpath('td')[3].xpath('text()')[0]
-        facility['datum_zverejneni'] = datetime.datetime.strptime(published, '%d. %m. %Y').date().isoformat()
+        facility['datum_zverejneni'] = datetime.datetime.strptime(published, date_format).date().isoformat()
         facility['zjistene_skutecnosti'] = process_offenses(tr.xpath('td')[4].xpath('span/text()'))
 
         # Data from the detail page
-        detail_html = request_html(
+        detail_resp = get_request(
             s,
             detail_url,
             params={'id': facility['id']},
-            headers=headers,
+            headers=resp.request.headers,
         )
+        detail_html = lxml.html.fromstring(detail_resp.text)
         try:
             ic = detail_html.xpath('//span[@id="MainContent_lblWsDetailIC"]/text()')[0]
         except IndexError:
@@ -78,9 +81,9 @@ def get_data(s, html, headers):
 
         facility['ico'] = ic
         facility['stav_uzavreni'] = state
-        facility['datum_uzavreni'] = datetime.datetime.strptime(closed, '%d. %m. %Y').date().isoformat()
+        facility['datum_uzavreni'] = datetime.datetime.strptime(closed, date_format).date().isoformat()
         try:
-            facility['datum_uvolneni_zakazu'] = datetime.datetime.strptime(opened, '%d. %m. %Y').date().isoformat()
+            facility['datum_uvolneni_zakazu'] = datetime.datetime.strptime(opened, date_format).date().isoformat()
         except TypeError:
             facility['datum_uvolneni_zakazu'] = None
         facility['referencni_cislo'] = ref_num
@@ -92,17 +95,7 @@ def get_data(s, html, headers):
     return data
 
 
-def facilities_to_csv(
-    start_url='https://www.potravinynapranyri.cz/WSearch.aspx',
-    params={
-        'lang': 'cs',
-        'design': 'default',
-        'archive': 'actual',
-        'listtype': 'table',
-        'page': '1',
-    },
-    output_filename='actual.csv',
-):
+def facilities_to_csv(start_url, params, output_filename):
 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
@@ -112,19 +105,21 @@ def facilities_to_csv(
     a = requests.adapters.HTTPAdapter(max_retries=4)
     s.mount('https://', a)
 
-    html = request_html(s, start_url, params, headers)  # first request only to get number of pages
-    last_page_index = get_last_page_index(html)
+    r = get_request(s, start_url, params, headers)  # first request only to get number of pages
+    last_page_index = get_last_page_index(r)
 
     data = []
 
+    print(f'{last_page_index} pages to parse.')
     for i in range(1, last_page_index + 1):
         params['page'] = i
-        html = request_html(s, start_url, params, headers)
-        new_data = get_data(s, html, headers=headers)
+        r = get_request(s, start_url, params, headers)
+        new_data = get_data(s, r)
         data.extend(new_data)
-        print(f'Parsed page {i} of {last_page_index} and added {len(new_data)} to list.')
+        print(f'{i}/{last_page_index}')
+    print(f'Collected {len(data)} facilities.')
 
-    with open(output_filename, 'w') as file:
+    with open(output_filename, 'w', newline='') as file:
         fieldnames = [
             'id',
             'referencni_cislo',
@@ -144,15 +139,29 @@ def facilities_to_csv(
         writer.writerows(data)
 
 
-if __name__ == '__main__':
-    facilities_to_csv()
-    facilities_to_csv(
-        params={
-            'lang': 'cs',
-            'design': 'default',
-            'archive': 'archive',  # This is different
-            'listtype': 'table',
-            'page': '1',
-        },
-        output_filename='archive.csv',
+def main():
+    start_url = 'https://www.potravinynapranyri.cz/WSearch.aspx'
+
+    parser = argparse.ArgumentParser(
+        prog='potraviny', description='parse data about closed facilities from a website www.potravinynapranyri.cz.'
     )
+    parser.add_argument(
+        '-a', '--archive', action='store_true', default=False, help='request archive data (default: False)'
+    )
+    parser.add_argument('-o', '--output', default='actual.csv', help='specify output filename (default: actual.csv)')
+
+    args = parser.parse_args()
+
+    params = {
+        'lang': 'cs',
+        'design': 'default',
+        'archive': 'archive' if args.archive else 'actual',
+        'listtype': 'table',
+        'page': '1',
+    }
+
+    facilities_to_csv(start_url, params, output_filename=args.output)
+
+
+if __name__ == '__main__':
+    main()
