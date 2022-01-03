@@ -9,6 +9,7 @@ https://www.youtube.com/watch?v=lyDLAutA88s
 """
 
 import csv
+import datetime
 
 import requests
 import lxml.html
@@ -23,8 +24,8 @@ def process_offenses(raw_offenses):
     return '|'.join(offens.strip() for offens in raw_offenses)
 
 
-def request_html(url, params, headers):
-    r = requests.get(url, params=params, headers=headers, timeout=4)
+def request_html(s, url, params, headers):
+    r = s.get(url, params=params, headers=headers, timeout=2)
     html = lxml.html.fromstring(r.text)
     return html
 
@@ -33,7 +34,7 @@ def get_num_pages(html):
     return len(html.xpath('//div[@class="Pager"]/div')[0].xpath('a/text()')[-2:])
 
 
-def get_data(html, headers):
+def get_data(s, html, headers):
     detail_url = 'https://www.potravinynapranyri.cz/WDetail.aspx'
 
     trs = html.xpath("//table/tr")[1:]  # skip table header
@@ -51,27 +52,35 @@ def get_data(html, headers):
 
         facility['nazev'] = tr.xpath('td')[1].xpath('span/text()')[0]
         facility['adresa'] = tr.xpath('td')[2].xpath('span/text()')[0]
-        facility['datum_zverejneni'] = tr.xpath('td')[3].xpath('text()')[0]
-        facility['zjistene_skutecnosti'] = process_offenses(
-            tr.xpath('td')[4].xpath('span/text()')
-        )
+        published = tr.xpath('td')[3].xpath('text()')[0]
+        facility['datum_zverejneni'] = datetime.datetime.strptime(published, '%d. %m. %Y').date().isoformat()
+        facility['zjistene_skutecnosti'] = process_offenses(tr.xpath('td')[4].xpath('span/text()'))
 
         # Data from the detail page
         detail_html = request_html(
-            detail_url, params={'id': facility['id']}, headers=headers
+            s,
+            detail_url,
+            params={'id': facility['id']},
+            headers=headers,
         )
 
-        facility['stav_uzavreni'] = detail_html.xpath('//table/tr/td[2]/a/text()')[0]
-
+        ic = detail_html.xpath('//span[@id="MainContent_lblWsDetailIC"]/text()')[0]
+        state = detail_html.xpath('//a[@id="MainContent_lnkWsDetailCloseState"]/text()')[0]
+        closed = detail_html.xpath('//span[@id="MainContent_lblWsDetailCloseDate"]/text()')[0]
         try:
-            closed, opened, reference = detail_html.xpath(
-                '//table/tr/td[2]/span/text()'
-            )
-            facility['datum_uvolneni_zakazu'] = opened
-        except ValueError:  # facility is still closed and one row is missing
-            closed, reference = detail_html.xpath('//table/tr/td[2]/span/text()')
-        facility['datum_uzavreni'] = closed
-        facility['referencni_cislo'] = reference
+            opened = detail_html.xpath('//span[@id="MainContent_lblWsDetailReopenDate"]/text()')[0]
+        except IndexError:
+            opened = None
+        ref_num = detail_html.xpath('//span[@id="MainContent_lblWsDetailReferenceNumber"]/text()')[0]
+
+        facility['ico'] = ic
+        facility['stav_uzavreni'] = state
+        facility['datum_uzavreni'] = datetime.datetime.strptime(closed, '%d. %m. %Y').date().isoformat()
+        try:
+            facility['datum_uvolneni_zakazu'] = datetime.datetime.strptime(opened, '%d. %m. %Y').date().isoformat()
+        except TypeError:
+            facility['datum_uvolneni_zakazu'] = None
+        facility['referencni_cislo'] = ref_num
 
         print(facility['nazev'])
         data.append(facility)
@@ -94,20 +103,35 @@ def facilities_to_csv(output_filename='provozovny.csv'):
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
     }
 
-    html = request_html(
-        start_url, params, headers
-    )  # first request only to get number of pages
+    s = requests.Session()
+    a = requests.adapters.HTTPAdapter(max_retries=3)
+    s.mount('https://', a)
+
+    html = request_html(s, start_url, params, headers)  # first request only to get number of pages
     pages = get_num_pages(html)
 
     data = []
 
     for i in range(1, pages + 1):
         params['page'] = i
-        html = request_html(start_url, params, headers)
-        data.extend(get_data(html, headers=headers))
+        html = request_html(s, start_url, params, headers)
+        data.extend(get_data(s, html, headers=headers))
 
     with open(output_filename, 'w') as file:
-        writer = csv.DictWriter(file, fieldnames=[col for col in data[0].keys()])
+        fieldnames = [
+            'id',
+            'referencni_cislo',
+            'ico',
+            'nazev',
+            'adresa',
+            'datum_zverejneni',
+            'datum_uzavreni',
+            'datum_uvolneni_zakazu',
+            'stav_uzavreni',
+            'druh',
+            'zjistene_skutecnosti',
+        ]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
 
