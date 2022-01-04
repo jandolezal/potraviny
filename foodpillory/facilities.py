@@ -1,5 +1,5 @@
 """
-Modul dotáže databázi uzavřených provozoven na webu https://www.potravinynapranyri.cz
+Modul dotáže seznam uzavřených provozoven na webu https://www.potravinynapranyri.cz
 a výsledek uloží do csv souboru.
 
 Inspirované následujícím příspěvkem:
@@ -11,6 +11,7 @@ https://www.youtube.com/watch?v=lyDLAutA88s
 import argparse
 import csv
 import datetime
+import pathlib
 
 import requests
 import lxml.html
@@ -119,7 +120,9 @@ def facilities_to_csv(start_url, params, output_filename):
         print(f'{i}/{last_page_index}')
     print(f'Collected {len(data)} facilities.')
 
-    with open(output_filename, 'w', newline='') as file:
+    pathlib.Path('data').mkdir(exist_ok=True)
+
+    with open(pathlib.Path('data') / output_filename, 'w', newline='') as file:
         fieldnames = [
             'id',
             'referencni_cislo',
