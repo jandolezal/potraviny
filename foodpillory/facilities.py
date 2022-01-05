@@ -89,8 +89,6 @@ def get_data(s, resp):
             facility['datum_uvolneni_zakazu'] = None
         facility['referencni_cislo'] = ref_num
 
-        facility['stazeno'] = datetime.date.today().isoformat()
-
         data.append(facility)
 
     return data
@@ -135,7 +133,6 @@ def facilities_to_csv(start_url, params, output_filename):
             'stav_uzavreni',
             'druh',
             'zjistene_skutecnosti',
-            'stazeno',
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
