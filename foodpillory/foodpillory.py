@@ -50,9 +50,7 @@ def plot_closed_count_by_year(closed_by_year):
         .properties(title='Počty uzavření v jednotlivých letech')
     )
 
-    text = bars.mark_text(
-        align='left', baseline='middle', dx=3
-    ).encode(text='pocet:Q')
+    text = bars.mark_text(align='left', baseline='middle', dx=3).encode(text='pocet:Q')
 
     return bars + text
 
@@ -74,9 +72,7 @@ def plot_business_types(business_types):
         .properties(title=f'Druhy uzavřených podniků (celkem {business_types["pocet"].sum()})')
     )
 
-    text = bars.mark_text(
-        align='left', baseline='middle', dx=3
-    ).encode(text='pocet:Q')
+    text = bars.mark_text(align='left', baseline='middle', dx=3).encode(text='pocet:Q')
 
     return bars + text
 
@@ -87,18 +83,16 @@ def load_offenses_perc(data):
     df = pd.DataFrame((offenses_freq.sort_values(ascending=False) * 100).round(1))
     df = df.reset_index()
     df.columns = ['Co se zanedbalo', 'Jak často (%)']
-    df['Jak často (%)'] = (
-        df['Jak často (%)'].astype(str).str.replace('.', ',', regex=False) + ' %'
-    )
+    df['Jak často (%)'] = df['Jak často (%)'].astype(str).str.replace('.', ',', regex=False) + ' %'
     df.index = np.arange(1, len(df) + 1)
     return df
 
 
-st.title('Uzavřené provozovny v roce 2021')
+st.title('Uzavřené provozovny  🍔 🐀')
 
-st.markdown('Jak se loni zavíraly hospody nebo obchody, odkud jídlo nechcete?')
+st.markdown('Jak se v minulých letech zavíraly hospody nebo obchody, odkud jídlo nechcete?')
 st.markdown(
-    'Zdrojem dat je webová aplikace [Potraviny na pranýři](https://www.potravinynapranyri.cz/), která shrnuje výsledky šetření Státní zemědělské a potravinářeské inspekce.'
+    'Zdrojem dat je webová aplikace [Potraviny na pranýři](https://www.potravinynapranyri.cz/), která shrnuje výsledky šetření Státní zemědělské a potravinářské inspekce.'
 )
 
 
@@ -116,8 +110,11 @@ c1 = plot_closed_count_by_year(closed_by_year)
 st.altair_chart(c1, use_container_width=True)
 
 
-# Load data only for year 2021
-last_year = load_year(data, 2021)
+selected_year = st.selectbox('Zvol rok, který tě zajímá', (2021, 2020, 2019, 2018, 2017, 2016, 2015))
+emojis = {2021: '🐀', 2020: '🐀', 2019: '🐀', 2018: '🐀', 2017: '🤮', 2016: '🤮', 2015: '🧹'}
+emoji = emojis[selected_year]
+# Load data only for selected year
+last_year = load_year(data, selected_year)
 
 
 # Categories of closed businesses
@@ -128,16 +125,16 @@ st.altair_chart(c2, use_container_width=True)
 
 
 # Percentage of offences accross closed establishments
-st.subheader('Co se zanedbalo')
+st.subheader('Co se zanedbalo ' + emoji)
 st.markdown('Na jednom místě se může sejít více pochybení.')
 
 sorted_offenses_perc = load_offenses_perc(last_year)
-num_offenses = st.slider('Vyber kolik pochybení ukázat', 1, sorted_offenses_perc.shape[0], 5)
+num_offenses = st.slider('Vyber kolik pochybení ukázat', 1, sorted_offenses_perc.shape[0], 10)
 sorted_offenses_perc = sorted_offenses_perc[:num_offenses]
 
 st.table(sorted_offenses_perc)
 
 st.markdown('Stránka se nevěnuje celkovému počtu provozoven, které šlo v daném roce navštívit...a zavřít.')
 st.markdown(
-    "Stránka jen tak pro nic za nic, původně inspirována skvělou přednáškou [Built in Super Heroes](https://www.youtube.com/watch?v=lyDLAutA88s), kde David Beazley pracuje jen s použitím standardní knihovny Pythonu s podobným (ale mnohem větším) datasetem, a také blogem Vicky Boykis [Doing small, fun projects](https://vickiboykis.com/2021/10/10/doing-small-fun-projects/)."
+    "První výkop stránky jen tak pro nic za nic, původně inspirována skvělou přednáškou [Built in Super Heroes](https://www.youtube.com/watch?v=lyDLAutA88s), kde David Beazley pracuje jen s použitím standardní knihovny Pythonu s podobným (ale mnohem větším) datasetem, a také blogem Vicky Boykis [Doing small, fun projects](https://vickiboykis.com/2021/10/10/doing-small-fun-projects/)."
 )
