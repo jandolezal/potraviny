@@ -55,6 +55,20 @@ def plot_closed_count_by_year(closed_by_year):
     return bars + text
 
 
+def load_closed_for_good(df):
+    closed_for_good = df[df['stav_uzavreni'] == 'Uzavřeno'].groupby(df['datum_uzavreni'].dt.year)['referencni_cislo'].count().reset_index()
+    closed_for_good.columns = ['rok_uzavreni', 'pocet']
+    return closed_for_good
+
+
+def plot_closed_for_good(df):
+    bars = alt.Chart(df).mark_bar(color='#ff4b4b').encode(
+        alt.Y('rok_uzavreni:N', title='Rok uzavření'),
+        alt.X('pocet:Q', title='Počet'),
+        ).properties(title='Počty stále uzavřených podniků')
+    return bars
+
+
 def load_business_types_count(data):
     business_types = data['druh'].value_counts().reset_index()
     business_types.columns = ['druh', 'pocet']
@@ -88,6 +102,38 @@ def load_offenses_perc(data):
     return df
 
 
+
+def load_offenses(data):
+    offenses = data['zjistene_skutecnosti'].str.get_dummies()
+    offenses_freq = offenses.mean()
+    df = pd.DataFrame((offenses_freq.sort_values(ascending=False)))
+    df = df.reset_index()
+    df.columns = ['Co se zanedbalo', 'Podíl']
+    df.index = np.arange(1, len(df) + 1)
+    return df
+
+
+def load_top_3_offenses_across_years(df, start, end):
+    top_multiple_years = pd.DataFrame()
+    for year in range(start, end + 1):
+        last_year = load_year(df, year)
+        last_year_problems = load_offenses(last_year)
+        top_problems = last_year_problems.loc[last_year_problems['Co se zanedbalo'].isin(['Výskyt trusu hlodavců', 'Nečistoty na podlaze', 'Výrazně zanedbaný úklid']), :].copy()
+        top_problems['Rok'] = year
+        top_multiple_years = pd.concat([top_multiple_years, top_problems])
+    top_multiple_years = top_multiple_years.reset_index(drop=True)
+    return top_multiple_years
+
+
+def plot_offenses_accross_years(df):
+    lines = alt.Chart(df).mark_line().encode(
+        alt.X('Rok:N', title='Rok uzavření'),
+        alt.Y('Podíl:Q', axis=alt.Axis(format='%'), title='Četnost (%)'),
+        color='Co se zanedbalo:N',
+        ).properties(title='Tři nejčastější problémy během let')
+    return lines
+
+
 @st.cache
 def convert_df_to_csv(df):
     return df.to_csv().encode('utf-8')
@@ -115,6 +161,21 @@ c1 = plot_closed_count_by_year(closed_by_year)
 st.altair_chart(c1, use_container_width=True)
 
 
+# Establishements closed for good throughout the years
+st.subheader('Kolik podniků již neotevřelo')
+closed_for_good = load_closed_for_good(data)
+c2 = plot_closed_for_good(closed_for_good)
+st.altair_chart(c2, use_container_width=True)
+
+
+# Top 3 offenses accross years
+st.subheader('Největší lahůdky napříč roky')
+top3_years = load_top_3_offenses_across_years(data, 2015, 2021)
+c3 = plot_offenses_accross_years(top3_years)
+st.altair_chart(c3, use_container_width=True)
+
+
+# Show rest of the statistics just for single year
 selected_year = st.selectbox(
     'Zvol rok, který tě zajímá',
     (2021, 2020, 2019, 2018, 2017, 2016, 2015),
@@ -129,8 +190,8 @@ last_year = load_year(data, selected_year)
 # Categories of closed businesses
 st.subheader('Jaké podniky se zavírají')
 business_types_count = load_business_types_count(last_year)
-c2 = plot_business_types(business_types_count)
-st.altair_chart(c2, use_container_width=True)
+c4 = plot_business_types(business_types_count)
+st.altair_chart(c4, use_container_width=True)
 
 
 # Percentage of offences accross closed establishments
