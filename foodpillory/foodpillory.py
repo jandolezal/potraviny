@@ -88,6 +88,11 @@ def load_offenses_perc(data):
     return df
 
 
+@st.cache
+def convert_df_to_csv(df):
+    return df.to_csv().encode('utf-8')
+
+
 st.title('Uzavřené provozovny  🍔 🐀')
 
 st.markdown('Jak se v minulých letech zavíraly hospody nebo obchody, odkud jídlo nechcete?')
@@ -110,7 +115,11 @@ c1 = plot_closed_count_by_year(closed_by_year)
 st.altair_chart(c1, use_container_width=True)
 
 
-selected_year = st.selectbox('Zvol rok, který tě zajímá', (2021, 2020, 2019, 2018, 2017, 2016, 2015))
+selected_year = st.selectbox(
+    'Zvol rok, který tě zajímá',
+    (2021, 2020, 2019, 2018, 2017, 2016, 2015),
+    help='Dále zobrazí statistiky již jen pro vybraný rok',
+    )
 emojis = {2021: '🐀', 2020: '🐀', 2019: '🐀', 2018: '🐀', 2017: '🤮', 2016: '🤮', 2015: '🧹'}
 emoji = emojis[selected_year]
 # Load data only for selected year
@@ -133,6 +142,18 @@ num_offenses = st.slider('Vyber kolik pochybení ukázat', 1, sorted_offenses_pe
 sorted_offenses_perc = sorted_offenses_perc[:num_offenses]
 
 st.table(sorted_offenses_perc)
+
+
+# Provide a button to download dataset for selected year as .csv
+csv = convert_df_to_csv(last_year)
+
+st.download_button(
+     label='Stáhnout data jako CSV',
+     data=csv,
+     file_name=f'foodpillory_{selected_year}.csv',
+     mime='text/csv',
+     help=f'Stáhne data pro rok {selected_year}'
+ )
 
 st.markdown('Stránka se nevěnuje celkovému počtu provozoven, které šlo v daném roce navštívit...a zavřít.')
 st.markdown(
