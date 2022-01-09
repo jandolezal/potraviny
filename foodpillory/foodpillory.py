@@ -45,7 +45,7 @@ def plot_closed_count_by_year(closed_by_year):
         .mark_bar(color='#ff4b4b')
         .encode(
             alt.Y('rok_uzavreni:N', title='Rok uzavření'),
-            alt.X('pocet:Q', title='Počet případů'),
+            alt.X('pocet:Q', title='Počet'),
         )
         .properties(title='Počty uzavření v jednotlivých letech')
     )
@@ -56,16 +56,26 @@ def plot_closed_count_by_year(closed_by_year):
 
 
 def load_closed_for_good(df):
-    closed_for_good = df[df['stav_uzavreni'] == 'Uzavřeno'].groupby(df['datum_uzavreni'].dt.year)['referencni_cislo'].count().reset_index()
+    closed_for_good = (
+        df[df['stav_uzavreni'] == 'Uzavřeno']
+        .groupby(df['datum_uzavreni'].dt.year)['referencni_cislo']
+        .count()
+        .reset_index()
+    )
     closed_for_good.columns = ['rok_uzavreni', 'pocet']
     return closed_for_good
 
 
 def plot_closed_for_good(df):
-    bars = alt.Chart(df).mark_bar(color='#ff4b4b').encode(
-        alt.Y('rok_uzavreni:N', title='Rok uzavření'),
-        alt.X('pocet:Q', title='Počet'),
-        ).properties(title='Počty stále uzavřených podniků')
+    bars = (
+        alt.Chart(df)
+        .mark_bar(color='#ff4b4b')
+        .encode(
+            alt.Y('rok_uzavreni:N', title='Rok uzavření'),
+            alt.X('pocet:Q', title='Počet'),
+        )
+        .properties(title='Počty stále uzavřených podniků')
+    )
     return bars
 
 
@@ -102,7 +112,6 @@ def load_offenses_perc(data):
     return df
 
 
-
 def load_offenses(data):
     offenses = data['zjistene_skutecnosti'].str.get_dummies()
     offenses_freq = offenses.mean()
@@ -118,7 +127,12 @@ def load_top_3_offenses_across_years(df, start, end):
     for year in range(start, end + 1):
         last_year = load_year(df, year)
         last_year_problems = load_offenses(last_year)
-        top_problems = last_year_problems.loc[last_year_problems['Co se zanedbalo'].isin(['Výskyt trusu hlodavců', 'Nečistoty na podlaze', 'Výrazně zanedbaný úklid']), :].copy()
+        top_problems = last_year_problems.loc[
+            last_year_problems['Co se zanedbalo'].isin(
+                ['Výskyt trusu hlodavců', 'Nečistoty na podlaze', 'Výrazně zanedbaný úklid']
+            ),
+            :,
+        ].copy()
         top_problems['Rok'] = year
         top_multiple_years = pd.concat([top_multiple_years, top_problems])
     top_multiple_years = top_multiple_years.reset_index(drop=True)
@@ -126,11 +140,16 @@ def load_top_3_offenses_across_years(df, start, end):
 
 
 def plot_offenses_accross_years(df):
-    lines = alt.Chart(df).mark_line().encode(
-        alt.X('Rok:N', title='Rok uzavření'),
-        alt.Y('Podíl:Q', axis=alt.Axis(format='%'), title='Četnost (%)'),
-        color='Co se zanedbalo:N',
-        ).properties(title='Tři nejčastější problémy během let')
+    lines = (
+        alt.Chart(df)
+        .mark_line()
+        .encode(
+            alt.X('Rok:N', title='Rok uzavření'),
+            alt.Y('Podíl:Q', axis=alt.Axis(format='%'), title='Četnost (%)'),
+            color='Co se zanedbalo:N',
+        )
+        .properties(title='Tři nejčastější problémy během let')
+    )
     return lines
 
 
@@ -180,16 +199,16 @@ selected_year = st.selectbox(
     'Zvol rok, který tě zajímá',
     (2021, 2020, 2019, 2018, 2017, 2016, 2015),
     help='Dále zobrazí statistiky již jen pro vybraný rok',
-    )
+)
 emojis = {2021: '🐀', 2020: '🐀', 2019: '🐀', 2018: '🐀', 2017: '🤮', 2016: '🤮', 2015: '🧹'}
 emoji = emojis[selected_year]
 # Load data only for selected year
-last_year = load_year(data, selected_year)
+selected_year_df = load_year(data, selected_year)
 
 
 # Categories of closed businesses
 st.subheader('Jaké podniky se zavírají')
-business_types_count = load_business_types_count(last_year)
+business_types_count = load_business_types_count(selected_year_df)
 c4 = plot_business_types(business_types_count)
 st.altair_chart(c4, use_container_width=True)
 
@@ -198,7 +217,7 @@ st.altair_chart(c4, use_container_width=True)
 st.subheader('Co se zanedbalo ' + emoji)
 st.markdown('Na jednom místě se může sejít více pochybení.')
 
-sorted_offenses_perc = load_offenses_perc(last_year)
+sorted_offenses_perc = load_offenses_perc(selected_year_df)
 num_offenses = st.slider('Vyber kolik pochybení ukázat', 1, sorted_offenses_perc.shape[0], 10)
 sorted_offenses_perc = sorted_offenses_perc[:num_offenses]
 
@@ -206,15 +225,15 @@ st.table(sorted_offenses_perc)
 
 
 # Provide a button to download dataset for selected year as .csv
-csv = convert_df_to_csv(last_year)
+csv = convert_df_to_csv(selected_year_df)
 
 st.download_button(
-     label='Stáhnout data jako CSV',
-     data=csv,
-     file_name=f'foodpillory_{selected_year}.csv',
-     mime='text/csv',
-     help=f'Stáhne data pro rok {selected_year}'
- )
+    label='Stáhnout data jako CSV',
+    data=csv,
+    file_name=f'foodpillory_{selected_year}.csv',
+    mime='text/csv',
+    help=f'Stáhne data pro rok {selected_year}',
+)
 
 st.markdown('Stránka se nevěnuje celkovému počtu provozoven, které šlo v daném roce navštívit...a zavřít.')
 st.markdown(
