@@ -1,4 +1,5 @@
 id,referencni_cislo,ico,nazev,adresa,datum_zverejneni,datum_uzavreni,datum_uvolneni_zakazu,stav_uzavreni,druh,zjistene_skutecnosti
+61153,P22-000106-SZPI-CZ,03575276,ASIAN FOODS s.r.o.,"Kolbenova 890/7A, 190 00 Praha",2022-08-09,2022-08-04,,Uzavřeno,Velkoobchod,Výskyt trusu hlodavců|Potraviny poškozené nebo kontaminované škůdci
 61152,P22-000105-SZPI-CZ,25015044,Makroinvest s.r.o.,"Husovy sady 2044, 356 01 Sokolov",2022-08-04,2022-08-03,,Uzavřeno,Rychlé občerstvení,Výskyt trusu hlodavců|Provozovna nezabezpečená před pronikáním škůdců
 61151,P22-000104-SZPI-CZ,25775481,"FRAMYS, spol. s r.o.","Ke Stadionu 50, 272 01 Kladno",2022-07-29,2022-07-28,2022-08-03,Znovu otevřeno,Maloobchod,Výskyt trusu hlodavců|Stopy po působení a výskytu hlodavců
 61150,P22-000103-SZPI-CZ,68826923,JARMILA ZOGLAUEROVÁ,"Úslavská 503/18, 32600 Plzeň",2022-07-25,2022-07-21,2022-07-25,Znovu otevřeno,"Pivnice, bar nebo herna",Nezajištěn přístup teplé vody pro očistu rukou
@@ -75,4 +76,3 @@ id,referencni_cislo,ico,nazev,adresa,datum_zverejneni,datum_uzavreni,datum_uvoln
 51076,P22-000028-SZPI-CZ,05806593,Danuška s.r.o.,"Svobodova 201/2, 362 25 Nová Role",2022-02-09,2022-02-09,2022-02-11,Znovu otevřeno,Maloobchod,Výskyt trusu hlodavců|Potraviny poškozené nebo kontaminované škůdci|Stopy po působení a výskytu hlodavců
 51075,P22-000027-SZPI-CZ,27273881,The Son Pham,"Liběšice 186, 411 46 Liběšice",2022-02-09,2022-02-08,2022-02-09,Znovu otevřeno,Maloobchod,Výskyt trusu hlodavců|Výskyt mrtvých hlodavců|Provozovna nezabezpečená před pronikáním škůdců|Nečistoty na regálech či zařízeních
 51074,P22-000026-SZPI-CZ,07116063,Gastro Slívová s.r.o.,"parcela 39/2 v areálu zemědělského družstva, 294 73 Hrušov",2022-02-09,2022-02-08,2022-02-11,Znovu otevřeno,Velkoobchod,Výskyt trusu hlodavců|Výskyt domácích nebo jiných zvířat v provozovně
-51073,P22-000025-SZPI-CZ,,JANA BUBELOVÁ,"Cementářské sídliště 1305, 753 01 Hranice",2022-02-08,2022-02-05,,Uzavřeno,Výroba,Velikost či uspořádání prostor pro výrobu potravin neumožňuje správnou hygienickou praxi
