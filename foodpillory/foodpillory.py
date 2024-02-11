@@ -6,7 +6,7 @@ import numpy as np
 import streamlit as st
 
 
-@st.cache
+@st.cache_data
 def load_data():
     actual = pd.read_csv(
         'data/actual.csv',
@@ -20,7 +20,7 @@ def load_data():
         dtype={'id': int, 'ico': str, 'druh': 'category'},
         parse_dates=['datum_zverejneni', 'datum_uzavreni', 'datum_uvolneni_zakazu'],
     )
-    combined = actual.append(archive)
+    combined = pd.concat([actual, archive])
     return combined
 
 
@@ -153,7 +153,7 @@ def plot_offenses_accross_years(df):
     return lines
 
 
-@st.cache
+@st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv().encode('utf-8')
 
@@ -189,7 +189,7 @@ st.altair_chart(c2, use_container_width=True)
 
 # Top 3 offenses accross years
 st.subheader('Největší lahůdky napříč roky')
-top3_years = load_top_3_offenses_across_years(data, 2015, 2023)
+top3_years = load_top_3_offenses_across_years(data, 2015, 2024)
 c3 = plot_offenses_accross_years(top3_years)
 st.altair_chart(c3, use_container_width=True)
 
@@ -197,11 +197,22 @@ st.altair_chart(c3, use_container_width=True)
 # Show rest of the statistics just for single year
 selected_year = st.selectbox(
     'Zvol rok, který tě zajímá',
-    (2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015),
+    (2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015),
     help='Dále zobrazí statistiky již jen pro vybraný rok',
 )
 # TODO: Move from hardcoded emojis to emojis based on top problems that year
-emojis = {2023: '🐀', 2022: '🐀', 2021: '🐀', 2020: '🐀', 2019: '🐀', 2018: '🐀', 2017: '🤮', 2016: '🤮', 2015: '🧹'}
+emojis = {
+    2024: '🐀',
+    2023: '🐀',
+    2022: '🐀',
+    2021: '🐀',
+    2020: '🐀',
+    2019: '🐀',
+    2018: '🐀',
+    2017: '🤮',
+    2016: '🤮',
+    2015: '🧹',
+}
 emoji = emojis[selected_year]
 # Load data only for selected year
 selected_year_df = load_year(data, selected_year)
